@@ -1,0 +1,22 @@
+# Node
+node_modules/
+dist/
+
+# Python
+venv/
+__pycache__/
+*.pyc
+
+# Environment
+.env
+
+#VS Code
+.vscode/
+
+# Logs
+*.log
+
+#AI Models
+*.pt
+*.pth
+*.onnx
