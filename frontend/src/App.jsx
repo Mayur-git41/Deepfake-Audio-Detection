@@ -19,11 +19,14 @@ function App() {
     });
 
     const data = await response.json();
-    setResult(`Uploaded: ${data.filename}`);
+
+    setResult(
+      `Prediction: ${data.prediction} | Confidence: ${data.confidence}%`
+    );
   };
 
   return (
-    <div style={{ textAlign: "center", marginTop: "50px" }}>
+    <div>
       <h1>Deepfake Audio Detection</h1>
 
       <input
@@ -34,7 +37,9 @@ function App() {
 
       <br /><br />
 
-      <button onClick={uploadFile}>Upload Audio</button>
+      <button onClick={uploadFile}>
+        Upload Audio
+      </button>
 
       <h2>{result}</h2>
     </div>
