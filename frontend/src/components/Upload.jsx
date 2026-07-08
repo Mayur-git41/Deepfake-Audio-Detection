@@ -1,10 +1,9 @@
 import { useState } from "react";
 
-function App() {
+function Upload() {
   const [file, setFile] = useState(null);
-  const [result, setResult] = useState("");
 
-  const uploadFile = async () => {
+  const handleUpload = async () => {
     if (!file) {
       alert("Please select an audio file.");
       return;
@@ -13,18 +12,18 @@ function App() {
     const formData = new FormData();
     formData.append("file", file);
 
-    const response = await fetch("http://127.0.0.1:8000/predict", {
+    const response = await fetch("http://127.0.0.1:8000/upload", {
       method: "POST",
       body: formData,
     });
 
     const data = await response.json();
-    setResult(`Uploaded: ${data.filename}`);
+    alert(data.message);
   };
 
   return (
-    <div style={{ textAlign: "center", marginTop: "50px" }}>
-      <h1>Deepfake Audio Detection</h1>
+    <div>
+      <h2>Upload Audio</h2>
 
       <input
         type="file"
@@ -32,13 +31,14 @@ function App() {
         onChange={(e) => setFile(e.target.files[0])}
       />
 
-      <br /><br />
+      <br />
+      <br />
 
-      <button onClick={uploadFile}>Upload Audio</button>
-
-      <h2>{result}</h2>
+      <button onClick={handleUpload}>
+        Upload Audio
+      </button>
     </div>
   );
 }
 
-export default App;
+export default Upload;
