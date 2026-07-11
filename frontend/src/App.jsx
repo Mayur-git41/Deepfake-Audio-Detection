@@ -3,6 +3,7 @@ import { useState } from "react";
 function App() {
   const [file, setFile] = useState(null);
   const [result, setResult] = useState(null);
+  const [history, setHistory] = useState([]);
 
   const uploadFile = async () => {
     if (!file) {
@@ -32,6 +33,22 @@ function App() {
     }
   };
 
+  const loadHistory = async () => {
+    try {
+      const response = await fetch(
+        "http://127.0.0.1:8000/history"
+      );
+
+      const data = await response.json();
+
+      setHistory(data);
+
+    } catch (error) {
+      console.error(error);
+      alert("Failed to load history");
+    }
+  };
+
   return (
     <div className="container mt-5">
 
@@ -57,6 +74,13 @@ function App() {
           Analyze Audio
         </button>
 
+        <button
+          className="btn btn-secondary mt-3 ms-2"
+          onClick={loadHistory}
+        >
+          View History
+        </button>
+
         {result && (
 
           <div className="card mt-4 p-3">
@@ -64,9 +88,7 @@ function App() {
             <h3>Prediction Result</h3>
 
             <p>
-              <strong>File:</strong>
-              {" "}
-              {result.filename}
+              <strong>File:</strong> {result.filename}
             </p>
 
             <p>
@@ -93,6 +115,44 @@ function App() {
               {" "}
               {result.confidence}%
             </p>
+
+          </div>
+
+        )}
+
+        {history.length > 0 && (
+
+          <div className="card mt-4 p-3">
+
+            <h3>Prediction History</h3>
+
+            <table className="table">
+
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>File</th>
+                  <th>Prediction</th>
+                  <th>Confidence</th>
+                </tr>
+              </thead>
+
+              <tbody>
+
+                {history.map((item) => (
+
+                  <tr key={item[0]}>
+                    <td>{item[0]}</td>
+                    <td>{item[1]}</td>
+                    <td>{item[2]}</td>
+                    <td>{item[3]}%</td>
+                  </tr>
+
+                ))}
+
+              </tbody>
+
+            </table>
 
           </div>
 
