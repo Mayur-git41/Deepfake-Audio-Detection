@@ -1,16 +1,16 @@
-import librosa
-import numpy as np
+from feature_extractor import extract_features
 
 def predict_audio(audio_path):
-    y, sr = librosa.load(audio_path, sr=None)
 
-    duration = librosa.get_duration(y=y, sr=sr)
+    features = extract_features(audio_path)
 
-    prediction = "Real"
-    confidence = 80
+    score = sum(features[:5])
 
-    if duration < 2:
-        prediction = "Fake"
+    prediction = "REAL"
+    confidence = 85
+
+    if score < 0:
+        prediction = "DEEPFAKE"
         confidence = 90
 
     return {

@@ -4,19 +4,15 @@ import shutil
 
 app = FastAPI()
 
-@app.get("/")
-def home():
-    return {"message": "Deepfake Audio Detection API"}
-
 @app.post("/predict")
 async def predict(file: UploadFile = File(...)):
 
-    file_path = f"temp_{file.filename}"
+    filepath = file.filename or "uploaded_file"
 
-    with open(file_path, "wb") as buffer:
+    with open(filepath, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
 
-    result = predict_audio(file_path)
+    result = predict_audio(filepath)
 
     return {
         "filename": file.filename,
