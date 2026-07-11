@@ -1,19 +1,21 @@
+import joblib
 from feature_extractor import extract_features
+
+model = joblib.load("deepfake_model.pkl")
 
 def predict_audio(audio_path):
 
     features = extract_features(audio_path)
 
-    score = sum(features[:5])
+    prediction = model.predict([features])[0]
 
-    prediction = "REAL"
-    confidence = 85
-
-    if score < 0:
-        prediction = "DEEPFAKE"
-        confidence = 90
+    if prediction == 0:
+        return {
+            "prediction": "REAL",
+            "confidence": 92
+        }
 
     return {
-        "prediction": prediction,
-        "confidence": confidence
+        "prediction": "DEEPFAKE",
+        "confidence": 95
     }
