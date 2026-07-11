@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState } from 'react';
 
-function App() {
+export default function App() {
   const [file, setFile] = useState(null);
   const [result, setResult] = useState("");
 
@@ -13,37 +13,35 @@ function App() {
     const formData = new FormData();
     formData.append("file", file);
 
-    const response = await fetch("http://127.0.0.1:8000/predict", {
-      method: "POST",
-      body: formData,
-    });
+    try {
+      const response = await fetch(
+        "http://127.0.0.1:8000/predict",
+        {
+          method: "POST",
+          body: formData,
+        }
+      );
 
-    const data = await response.json();
+      const data = await response.json();
 
-    setResult(
-      `Prediction: ${data.prediction} | Confidence: ${data.confidence}%`
-    );
+      setResult(
+        `Prediction: ${data.prediction} | Confidence: ${data.confidence}%`
+      );
+    } catch (error) {
+      console.error(error);
+      alert("Backend connection failed");
+    }
   };
 
   return (
     <div>
-      <h1>Deepfake Audio Detection</h1>
-
       <input
         type="file"
-        accept=".wav,.mp3"
+        accept="audio/*"
         onChange={(e) => setFile(e.target.files[0])}
       />
-
-      <br /><br />
-
-      <button onClick={uploadFile}>
-        Upload Audio
-      </button>
-
-      <h2>{result}</h2>
+      <button onClick={uploadFile}>Upload</button>
+      {result && <p>{result}</p>}
     </div>
   );
 }
-
-export default App;

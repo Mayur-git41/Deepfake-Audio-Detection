@@ -1,5 +1,6 @@
-from fastapi import FastAPI, UploadFile, File # type: ignore
+from fastapi import FastAPI, UploadFile, File
 from model import predict_audio
+import shutil
 
 app = FastAPI()
 
@@ -9,7 +10,13 @@ def home():
 
 @app.post("/predict")
 async def predict(file: UploadFile = File(...)):
-    result = predict_audio()
+
+    file_path = f"temp_{file.filename}"
+
+    with open(file_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+
+    result = predict_audio(file_path)
 
     return {
         "filename": file.filename,
