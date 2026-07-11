@@ -1,3 +1,5 @@
+from report_generator import create_report
+from fastapi.responses import FileResponse
 from fastapi import FastAPI, UploadFile, File
 from model import predict_audio
 from database import create_database # type: ignore
@@ -66,3 +68,21 @@ def history():
     conn.close()
 
     return rows
+
+@app.get("/report/{filename}")
+def generate_report(filename: str):
+
+    prediction = "REAL"
+    confidence = 92
+
+    pdf_file = create_report(
+        filename,
+        prediction,
+        confidence
+    )
+
+    return FileResponse(
+        pdf_file,
+        media_type="application/pdf",
+        filename=pdf_file
+    )

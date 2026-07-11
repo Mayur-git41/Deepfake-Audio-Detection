@@ -24,7 +24,6 @@ function App() {
       );
 
       const data = await response.json();
-
       setResult(data);
 
     } catch (error) {
@@ -40,7 +39,6 @@ function App() {
       );
 
       const data = await response.json();
-
       setHistory(data);
 
     } catch (error) {
@@ -54,12 +52,12 @@ function App() {
 
       <div className="card shadow p-4">
 
-        <h1 className="text-center">
+        <h1 className="text-center mb-4">
           Deepfake Audio Detection
         </h1>
 
         <input
-          className="form-control mt-3"
+          className="form-control"
           type="file"
           accept=".wav,.mp3"
           onChange={(e) =>
@@ -67,19 +65,21 @@ function App() {
           }
         />
 
-        <button
-          className="btn btn-primary mt-3"
-          onClick={uploadFile}
-        >
-          Analyze Audio
-        </button>
+        <div className="mt-3">
+          <button
+            className="btn btn-primary"
+            onClick={uploadFile}
+          >
+            Analyze Audio
+          </button>
 
-        <button
-          className="btn btn-secondary mt-3 ms-2"
-          onClick={loadHistory}
-        >
-          View History
-        </button>
+          <button
+            className="btn btn-secondary ms-2"
+            onClick={loadHistory}
+          >
+            View History
+          </button>
+        </div>
 
         {result && (
 
@@ -107,7 +107,6 @@ function App() {
               >
                 {result.prediction}
               </span>
-
             </p>
 
             <p>
@@ -115,6 +114,15 @@ function App() {
               {" "}
               {result.confidence}%
             </p>
+
+            <a
+              className="btn btn-success mt-2"
+              href={`http://127.0.0.1:8000/report/${result.filename}`}
+              target="_blank"
+              rel="noreferrer"
+            >
+              Download PDF Report
+            </a>
 
           </div>
 
@@ -126,7 +134,7 @@ function App() {
 
             <h3>Prediction History</h3>
 
-            <table className="table">
+            <table className="table table-bordered">
 
               <thead>
                 <tr>
