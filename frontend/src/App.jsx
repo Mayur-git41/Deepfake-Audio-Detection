@@ -1,9 +1,11 @@
 import { useState } from "react";
+import Analytics from "./Analytics";
 
 function App() {
   const [file, setFile] = useState(null);
   const [result, setResult] = useState(null);
   const [history, setHistory] = useState([]);
+  const [search, setSearch] = useState("");
 
   const uploadFile = async () => {
     if (!file) {
@@ -47,6 +49,23 @@ function App() {
     }
   };
 
+  const totalScans = history.length;
+
+  const realCount = history.filter(
+    (item) => item[2] === "REAL"
+  ).length;
+
+  const fakeCount = history.filter(
+    (item) => item[2] === "DEEPFAKE"
+  ).length;
+
+  const filteredHistory = history.filter(
+    (item) =>
+      item[1]
+        .toLowerCase()
+        .includes(search.toLowerCase())
+  );
+
   return (
     <div className="container mt-5">
 
@@ -81,6 +100,37 @@ function App() {
           </button>
         </div>
 
+        {/* Dashboard Statistics */}
+
+        <div className="row mt-4">
+
+          <div className="col-md-4">
+            <div className="card text-center p-3">
+              <h5>Total Scans</h5>
+              <h2>{totalScans}</h2>
+            </div>
+          </div>
+
+          <div className="col-md-4">
+            <div className="card text-center p-3">
+              <h5>REAL</h5>
+              <h2 className="text-success">
+                {realCount}
+              </h2>
+            </div>
+          </div>
+
+          <div className="col-md-4">
+            <div className="card text-center p-3">
+              <h5>DEEPFAKE</h5>
+              <h2 className="text-danger">
+                {fakeCount}
+              </h2>
+            </div>
+          </div>
+
+        </div>
+
         {result && (
 
           <div className="card mt-4 p-3">
@@ -107,11 +157,11 @@ function App() {
               >
                 {result.prediction}
               </span>
+
             </p>
 
             <p>
-              <strong>Confidence:</strong>
-              {" "}
+              <strong>Confidence:</strong>{" "}
               {result.confidence}%
             </p>
 
@@ -134,6 +184,16 @@ function App() {
 
             <h3>Prediction History</h3>
 
+            <input
+              type="text"
+              className="form-control mb-3"
+              placeholder="Search filename..."
+              value={search}
+              onChange={(e) =>
+                setSearch(e.target.value)
+              }
+            />
+
             <table className="table table-bordered">
 
               <thead>
@@ -147,13 +207,15 @@ function App() {
 
               <tbody>
 
-                {history.map((item) => (
+                {filteredHistory.map((item) => (
 
                   <tr key={item[0]}>
+
                     <td>{item[0]}</td>
                     <td>{item[1]}</td>
                     <td>{item[2]}</td>
                     <td>{item[3]}%</td>
+
                   </tr>
 
                 ))}
@@ -164,6 +226,10 @@ function App() {
 
           </div>
 
+        )}
+
+        {history.length > 0 && (
+          <Analytics history={history} />
         )}
 
       </div>
