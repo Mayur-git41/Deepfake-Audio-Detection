@@ -1,3 +1,6 @@
+import sqlite3
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from report_generator import create_report
 from fastapi.responses import FileResponse
 from fastapi import FastAPI, UploadFile, File
@@ -7,9 +10,81 @@ import sqlite3
 import shutil
 
 app = FastAPI()
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 create_database()
 
+@app.post("/register")
+async def register(user: dict):
+
+    conn = sqlite3.connect("predictions.db")
+    cursor = conn.cursor()
+
+    try:
+        cursor.execute(
+            """
+            INSERT INTO users
+            (username,password)
+            VALUES (?,?)
+            """,
+            (
+                user["username"],
+                user["password"]
+            )
+        )
+
+        conn.commit()
+
+        return {
+            "message": "Registration successful"
+        }
+
+    except:
+        return {
+            "message": "Username already exists"
+        }
+
+    finally:
+        conn.close()
+        
+@app.post("/login")
+async def login(user: dict):
+
+    conn = sqlite3.connect("predictions.db")
+    cursor = conn.cursor()
+
+    cursor.execute(
+        """
+        SELECT *
+        FROM users
+        WHERE username=?
+        AND password=?
+        """,
+        (
+            user["username"],
+            user["password"]
+        )
+    )
+
+    result = cursor.fetchone()
+
+    conn.close()
+
+    if result:
+        return {
+            "success": True
+        }
+
+    return {
+        "success": False
+    }
+            
 @app.get("/")
 def home():
     return {"message": "Deepfake Audio Detection API"}

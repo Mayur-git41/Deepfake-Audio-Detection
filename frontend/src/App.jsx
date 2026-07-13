@@ -1,7 +1,11 @@
+import Login from "./Login";
+import Register from "./Register";
 import { useState } from "react";
 import Analytics from "./Analytics";
 
 function App() {
+  const [loggedIn, setLoggedIn] = useState(false);
+  const [showRegister, setShowRegister] = useState(true);
   const [file, setFile] = useState(null);
   const [result, setResult] = useState(null);
   const [history, setHistory] = useState([]);
@@ -66,10 +70,38 @@ function App() {
         .includes(search.toLowerCase())
   );
 
+  if (!loggedIn) {
+    if (showRegister) {
+      return (
+        <Register
+          onRegister={() =>
+            setShowRegister(false)
+          }
+        />
+      );
+    }
+
+    return (
+      <Login
+        onLogin={() =>
+          setLoggedIn(true)
+        }
+      />
+    );
+  }
+
   return (
     <div className="container mt-5">
 
       <div className="card shadow p-4">
+        <button
+          className="btn btn-danger float-end"
+          onClick={() =>
+          setLoggedIn(false)
+          }
+        >
+          Logout
+        </button>
 
         <h1 className="text-center mb-4">
           Deepfake Audio Detection
