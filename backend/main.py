@@ -1,163 +1,214 @@
-import sqlite3
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-from report_generator import create_report
-from fastapi.responses import FileResponse
-from fastapi import FastAPI, UploadFile, File
-from model import predict_audio
-from database import create_database # type: ignore
-import sqlite3
+import os
 import shutil
 
-app = FastAPI()
+from fastapi import FastAPI, UploadFile, File
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from pydantic import BaseModel
+
+from supabase_client import supabase
+from model import predict_audio
+from report_generator import create_report
+from auth import hash_password, verify_password
+
+app = FastAPI(title="Deepfake Audio Detection API")
+
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["http://localhost:5173"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-create_database()
+os.makedirs("uploads", exist_ok=True)
 
-@app.post("/register")
-async def register(user: dict):
+class User(BaseModel):
+    username: str
+    password: str
 
-    conn = sqlite3.connect("predictions.db")
-    cursor = conn.cursor()
 
-    try:
-        cursor.execute(
-            """
-            INSERT INTO users
-            (username,password)
-            VALUES (?,?)
-            """,
-            (
-                user["username"],
-                user["password"]
-            )
-        )
-
-        conn.commit()
-
-        return {
-            "message": "Registration successful"
-        }
-
-    except:
-        return {
-            "message": "Username already exists"
-        }
-
-    finally:
-        conn.close()
-        
-@app.post("/login")
-async def login(user: dict):
-
-    conn = sqlite3.connect("predictions.db")
-    cursor = conn.cursor()
-
-    cursor.execute(
-        """
-        SELECT *
-        FROM users
-        WHERE username=?
-        AND password=?
-        """,
-        (
-            user["username"],
-            user["password"]
-        )
-    )
-
-    result = cursor.fetchone()
-
-    conn.close()
-
-    if result:
-        return {
-            "success": True
-        }
-
-    return {
-        "success": False
-    }
-            
 @app.get("/")
 def home():
-    return {"message": "Deepfake Audio Detection API"}
+    return {
+        "message": "Deepfake Audio Detection API Running"
+    }
+
+@app.post("/register")
+async def register(user: User):
+
+    try:
+
+        existing = (
+            supabase
+            .table("users")
+            .select("*")
+            .eq("username", user.username)
+            .execute()
+        )
+
+        if existing.data:
+            return {
+                "success": False,
+                "message": "Username already exists"
+            }
+
+        supabase.table("users").insert({
+            "username": user.username,
+            "password": hash_password(user.password)
+        }).execute()
+
+        return {
+            "success": True,
+            "message": "Registration Successful"
+        }
+
+    except Exception as e:
+
+        return {
+            "success": False,
+            "message": str(e)
+        }
+
+@app.post("/login")
+async def login(user: User):
+
+    try:
+
+        response = (
+            supabase
+            .table("users")
+            .select("*")
+            .eq("username", user.username)
+            .execute()
+        )
+
+        if len(response.data) == 0:
+
+            return {
+                "success": False,
+                "message": "User not found"
+            }
+
+        db_user = response.data[0]
+
+        if verify_password(user.password, db_user["password"]): # type: ignore
+
+            return {
+                "success": True,
+                "username": db_user["username"] # type: ignore
+            }
+
+        return {
+            "success": False,
+            "message": "Invalid Password"
+        }
+
+    except Exception as e:
+
+        return {
+            "success": False,
+            "message": str(e)
+        }
 
 @app.post("/predict")
 async def predict(file: UploadFile = File(...)):
 
-    filepath = file.filename
+    filename = file.filename or "audio.wav"
 
-    with open(filepath, "wb") as buffer: # type: ignore
+    filepath = os.path.join(
+        "uploads",
+        filename
+    )
+
+    with open(filepath, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
 
     result = predict_audio(filepath)
 
-    conn = sqlite3.connect("predictions.db")
+    try:
 
-    cursor = conn.cursor()
+        supabase.table("predictions").insert({
 
-    cursor.execute(
-        """
-        INSERT INTO predictions
-        (filename,prediction,confidence)
-        VALUES (?,?,?)
-        """,
-        (
-            file.filename,
-            result["prediction"],
-            result["confidence"]
-        )
-    )
+            "filename": filename,
+            "prediction": result["prediction"],
+            "confidence": result["confidence"]
 
-    conn.commit()
-    conn.close()
+        }).execute()
+
+    except Exception as e:
+
+        print(e)
 
     return {
-        "filename": file.filename,
+
+        "filename": filename,
         "prediction": result["prediction"],
         "confidence": result["confidence"]
+
     }
 
 @app.get("/history")
 def history():
 
-    conn = sqlite3.connect("predictions.db")
+    try:
 
-    cursor = conn.cursor()
+        response = (
+            supabase
+            .table("predictions")
+            .select("*")
+            .order("id", desc=True)
+            .execute()
+        )
 
-    cursor.execute("""
-        SELECT *
-        FROM predictions
-        ORDER BY id DESC
-    """)
+        return response.data
 
-    rows = cursor.fetchall()
+    except Exception as e:
 
-    conn.close()
-
-    return rows
+        return {
+            "success": False,
+            "message": str(e)
+        }
 
 @app.get("/report/{filename}")
-def generate_report(filename: str):
+def report(filename: str):
 
-    prediction = "REAL"
-    confidence = 92
+    try:
 
-    pdf_file = create_report(
-        filename,
-        prediction,
-        confidence
-    )
+        response = (
+            supabase
+            .table("predictions")
+            .select("*")
+            .eq("filename", filename)
+            .order("id", desc=True)
+            .limit(1)
+            .execute()
+        )
 
-    return FileResponse(
-        pdf_file,
-        media_type="application/pdf",
-        filename=pdf_file
-    )
+        if len(response.data) == 0:
+
+            return {
+                "message": "File not found"
+            }
+
+        row = response.data[0]
+
+        pdf = create_report(
+            filename,
+            row["prediction"], # type: ignore
+            row["confidence"] # type: ignore
+        )
+
+        return FileResponse(
+            pdf,
+            media_type="application/pdf",
+            filename=pdf
+        )
+
+    except Exception as e:
+
+        return {
+            "success": False,
+            "message": str(e)
+        }

@@ -7,38 +7,76 @@ function Login({ onLogin }) {
 
   const login = async () => {
 
-    const response = await fetch(
-      "http://127.0.0.1:8000/login",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          username,
-          password
-        })
-      }
-    );
-
-    const data = await response.json();
-
-    if (data.success) {
-      onLogin();
-    } else {
-      alert("Invalid username or password");
+    if (username.trim() === "" || password.trim() === "") {
+      alert("Please enter username and password.");
+      return;
     }
+
+    try {
+
+      const response = await fetch(
+        "http://127.0.0.1:8000/login",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            username,
+            password
+          })
+        }
+      );
+
+      const data = await response.json();
+
+      if (data.success) {
+
+        localStorage.setItem(
+          "username",
+          username
+        );
+
+        localStorage.setItem(
+          "login",
+          "true"
+        );
+
+        onLogin(username);
+
+      } else {
+
+        alert("Invalid username or password");
+
+      }
+
+    } catch (error) {
+
+      console.error(error);
+
+      alert("Unable to connect to the backend.");
+
+    }
+
   };
 
   return (
+
     <div className="container mt-5">
 
-      <div className="card p-4">
+      <div
+        className="card shadow-lg p-4 mx-auto"
+        style={{ maxWidth: "500px" }}
+      >
 
-        <h2>Login</h2>
+        <h2 className="text-center mb-4">
+
+          Login
+
+        </h2>
 
         <input
-          className="form-control mt-3"
+          className="form-control mb-3"
           placeholder="Username"
           value={username}
           onChange={(e) =>
@@ -47,7 +85,7 @@ function Login({ onLogin }) {
         />
 
         <input
-          className="form-control mt-3"
+          className="form-control mb-3"
           type="password"
           placeholder="Password"
           value={password}
@@ -57,16 +95,20 @@ function Login({ onLogin }) {
         />
 
         <button
-          className="btn btn-primary mt-3"
+          className="btn btn-primary w-100"
           onClick={login}
         >
+
           Login
+
         </button>
 
       </div>
 
     </div>
+
   );
+
 }
 
 export default Login;
