@@ -1,6 +1,4 @@
 import os
-import shutil
-
 from fastapi import FastAPI, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
@@ -13,6 +11,9 @@ from auth import hash_password, verify_password
 
 app = FastAPI(title="Deepfake Audio Detection API")
 
+# -----------------------------------
+# CORS
+# -----------------------------------
 
 app.add_middleware(
     CORSMiddleware,
@@ -22,18 +23,35 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-os.makedirs("uploads", exist_ok=True)
+# -----------------------------------
+# Temporary Folder
+# -----------------------------------
+
+os.makedirs("temp", exist_ok=True)
+
+# -----------------------------------
+# User Model
+# -----------------------------------
 
 class User(BaseModel):
     username: str
     password: str
 
 
+# -----------------------------------
+# Home
+# -----------------------------------
+
 @app.get("/")
 def home():
     return {
         "message": "Deepfake Audio Detection API Running"
     }
+
+
+# -----------------------------------
+# Register
+# -----------------------------------
 
 @app.post("/register")
 async def register(user: User):
@@ -55,8 +73,10 @@ async def register(user: User):
             }
 
         supabase.table("users").insert({
+
             "username": user.username,
             "password": hash_password(user.password)
+
         }).execute()
 
         return {
@@ -70,6 +90,11 @@ async def register(user: User):
             "success": False,
             "message": str(e)
         }
+
+
+# -----------------------------------
+# Login
+# -----------------------------------
 
 @app.post("/login")
 async def login(user: User):
@@ -112,42 +137,79 @@ async def login(user: User):
             "message": str(e)
         }
 
+
+# -----------------------------------
+# Predict
+# -----------------------------------
+
 @app.post("/predict")
 async def predict(file: UploadFile = File(...)):
 
-    filename = file.filename or "audio.wav"
-
-    filepath = os.path.join(
-        "uploads",
-        filename
-    )
-
-    with open(filepath, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
-
-    result = predict_audio(filepath)
-
     try:
 
+        filename = file.filename or "audio.wav"
+
+        # Read uploaded file
+        file_bytes = await file.read()
+
+        # Upload to Supabase Storage
+        supabase.storage.from_("audio-files").upload(
+            path=filename,
+            file=file_bytes,
+            file_options={
+                "content-type": file.content_type or "audio/wav",
+                "upsert": "true"
+            }
+        )
+
+        # Get Public URL
+        file_url = supabase.storage.from_("audio-files").get_public_url(filename)
+
+        # Save temporary file for ML model
+        temp_path = os.path.join("temp", filename)
+
+        with open(temp_path, "wb") as f:
+            f.write(file_bytes)
+
+        # Predict
+        result = predict_audio(temp_path)
+
+        # Delete temporary file
+        if os.path.exists(temp_path):
+            os.remove(temp_path)
+
+        # Save prediction
         supabase.table("predictions").insert({
 
             "filename": filename,
             "prediction": result["prediction"],
-            "confidence": result["confidence"]
+            "confidence": result["confidence"],
+            "file_url": file_url
 
         }).execute()
 
+        return {
+
+            "filename": filename,
+            "prediction": result["prediction"],
+            "confidence": result["confidence"],
+            "file_url": file_url
+
+        }
+
     except Exception as e:
 
-        print(e)
+        return {
 
-    return {
+            "success": False,
+            "message": str(e)
 
-        "filename": filename,
-        "prediction": result["prediction"],
-        "confidence": result["confidence"]
+        }
 
-    }
+
+# -----------------------------------
+# History
+# -----------------------------------
 
 @app.get("/history")
 def history():
@@ -167,9 +229,16 @@ def history():
     except Exception as e:
 
         return {
+
             "success": False,
             "message": str(e)
+
         }
+
+
+# -----------------------------------
+# Report
+# -----------------------------------
 
 @app.get("/report/{filename}")
 def report(filename: str):
@@ -195,20 +264,26 @@ def report(filename: str):
         row = response.data[0]
 
         pdf = create_report(
+
             filename,
             row["prediction"], # type: ignore
             row["confidence"] # type: ignore
+
         )
 
         return FileResponse(
+
             pdf,
             media_type="application/pdf",
             filename=pdf
+
         )
 
     except Exception as e:
 
         return {
+
             "success": False,
             "message": str(e)
+
         }

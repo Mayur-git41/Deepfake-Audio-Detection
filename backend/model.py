@@ -1,21 +1,8 @@
-import librosa
-import numpy as np
 import joblib
+from feature_extractor import extract_features
 
+# Load trained model
 model = joblib.load("deepfake_model.pkl")
-
-
-def extract_features(audio_path):
-
-    audio, sr = librosa.load(audio_path, sr=None)
-
-    mfccs = librosa.feature.mfcc(
-        y=audio,
-        sr=sr,
-        n_mfcc=40
-    )
-
-    return np.mean(mfccs.T, axis=0)
 
 
 def predict_audio(audio_path):
@@ -24,6 +11,10 @@ def predict_audio(audio_path):
 
     prediction = model.predict([features])[0]
 
+    probabilities = model.predict_proba([features])[0]
+
+    confidence = round(max(probabilities) * 100, 2)
+
     if prediction == 0:
         label = "REAL"
     else:
@@ -31,5 +22,5 @@ def predict_audio(audio_path):
 
     return {
         "prediction": label,
-        "confidence": 95
+        "confidence": confidence
     }
